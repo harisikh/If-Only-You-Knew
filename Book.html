@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>If Only You Knew</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* paper + ink */
+    --paper:        #efe6d2;
+    --paper-hi:     #f5eede;
+    --paper-lo:     #e4d8bd;
+    --paper-edge:   #d8c8a6;
+    --ink:          #2c2218;
+    --ink-soft:     #5c4f3d;
+    --ink-faint:    #8a7a62;
+    --rule:         #c9b790;
+    --oxblood:      #8c3a2f;
+    --rose:         #a8584d;
+    --brass:        #b0894f;
+    --desk:         #1a140d;
+    --desk-2:       #241b11;
+
+    --serif:  'EB Garamond', Georgia, 'Times New Roman', serif;
+    --display:'Cormorant Garamond', Georgia, serif;
+    --mono:   'Courier Prime', 'Courier New', monospace;
+
+    --page-w: 720px;
+    --ease: cubic-bezier(.22,.61,.36,1);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(120% 90% at 50% 0%, var(--desk-2) 0%, var(--desk) 60%, #120d08 100%);
+    color:var(--ink);
+    font-family:var(--serif);
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+    min-height:100%;
+  }
+
+  /* faint candle-warm vignette over the whole desk */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background:radial-gradient(60% 50% at 50% 42%, rgba(176,137,79,.10), transparent 70%);
+    pointer-events:none; z-index:0;
+  }
+
+  /* ---------- THE BOOK ---------- */
+  #book{
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    padding:max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+    z-index:1;
+  }
+
+  .page{
+    position:relative;
+    width:min(var(--page-w), 94vw);
+    height:min(88vh, 940px);
+    background:
+      linear-gradient(105deg, var(--paper-hi), var(--paper) 30%, var(--paper-lo) 100%);
+    border-radius:3px 8px 8px 3px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.4) inset,
+      -14px 0 22px -18px rgba(0,0,0,.55) inset,   /* gutter / binding shade */
+      0 26px 60px -22px rgba(0,0,0,.7),
+      0 4px 14px rgba(0,0,0,.35);
+    overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  /* paper grain */
+  .page::after{
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/></svg>");
+    mix-blend-mode:multiply;
+  }
+  /* deckled / aged right edge feathering */
+  .page::before{
+    content:""; position:absolute; top:0; right:0; bottom:0; width:26px; pointer-events:none;
+    background:linear-gradient(to left, rgba(120,90,45,.20), transparent);
+    z-index:3;
+  }
+
+  /* the actual leaf that holds a single letter; we animate these */
+  .leaf{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    padding:clamp(24px,4vw,52px) clamp(26px,6vw,72px);
+    opacity:0; visibility:hidden;
+    transform:translateX(28px);
+    transition:opacity .7s var(--ease), transform .7s var(--ease);
+    z-index:2;
+  }
+  .leaf.active{ opacity:1; visibility:visible; transform:translateX(0); z-index:4; }
+  .leaf.leaving-left{ opacity:0; transform:translateX(-34px); z-index:3; }
+  .leaf.leaving-right{ opacity:0; transform:translateX(34px); z-index:3; }
+
+  /* folio / chapter header */
+  .folio{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family:var(--display);
+    font-size:12px; letter-spacing:.32em; text-transform:uppercase;
+    color:var(--ink-faint);
+    border-bottom:1px solid var(--rule);
+    padding-bottom:10px; margin-bottom:18px;
+    flex:0 0 auto;
+  }
+  .folio .num{ letter-spacing:.18em; }
+
+  /* body block; scrolls internally if a letter runs long */
+  .body{
+    flex:1 1 auto; min-height:0;
+    display:flex; flex-direction:column; justify-content:flex-start;
+    max-width:46ch; margin:0 auto; width:100%;
+    overflow-y:auto; padding-bottom:6px;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+    transition:-webkit-mask-image .3s, mask-image .3s;
+  }
+  .body::-webkit-scrollbar{ display:none; }
+
+  .salutation{
+    font-family:var(--display);
+    font-weight:500;
+    font-size:clamp(24px,4.6vw,36px);
+    line-height:1.12;
+    color:var(--ink);
+    margin:0 0 .9rem;
+    letter-spacing:.005em;
+    flex:0 0 auto;
+  }
+  .salutation em{ font-style:italic; color:var(--oxblood); }
+
+  .body p{
+    font-size:clamp(15.5px,2.2vw,17.5px);
+    line-height:1.62;
+    color:var(--ink);
+    margin:0 0 .82rem;
+  }
+  .body p:last-child{ margin-bottom:0; }
+  .body em{ font-style:italic; }
+  .body .lead{ text-indent:0; }
+  .body .quietline{
+    color:var(--oxblood); font-style:italic;
+  }
+  .heart{ color:var(--oxblood); font-style:normal; }
+
+  /* the "Someone will..." litany */
+  .litany{ margin:.2rem 0 1rem; }
+  .litany p{
+    margin:0 0 .6rem; padding-left:0; position:relative;
+    color:var(--ink); line-height:1.6;
+  }
+  .litany p::before{
+    content:""; position:absolute; left:0; color:var(--rose);
+  }
+
+  /* footer / running base of every leaf */
+  .leaf-foot{
+    flex:0 0 auto; margin-top:auto; padding-top:14px;
+    display:flex; justify-content:center; align-items:center; gap:10px;
+    font-family:var(--display); font-size:11px; letter-spacing:.34em;
+    text-transform:uppercase; color:var(--ink-faint);
+  }
+  .leaf-foot .dot{ width:3px; height:3px; border-radius:50%; background:var(--rule); }
+
+  /* ---------- NAVIGATION ---------- */
+  .nav{
+    position:fixed; top:50%; transform:translateY(-50%);
+    width:46px; height:46px; border-radius:50%;
+    border:1px solid rgba(208,176,120,.4);
+    background:rgba(20,15,9,.35); color:#e7d8b6;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; z-index:30; backdrop-filter:blur(2px);
+    transition:opacity .4s, background .25s, transform .25s var(--ease);
+    font-size:18px; user-select:none;
+  }
+  .nav:hover{ background:rgba(140,58,47,.5); }
+  .nav.prev{ left:max(10px, calc(50vw - var(--page-w)/2 - 64px)); }
+  .nav.next{ right:max(10px, calc(50vw - var(--page-w)/2 - 64px)); }
+  .nav[hidden]{ opacity:0; pointer-events:none; }
+
+  /* progress folio at very bottom */
+  .progress{
+    position:fixed; left:50%; bottom:max(10px, env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    font-family:var(--mono); font-size:11px; letter-spacing:.25em;
+    color:rgba(231,216,182,.5); z-index:20; user-select:none;
+    transition:opacity .4s;
+  }
+
+  /* ---------- COVER ---------- */
+  #cover .body{ justify-content:center; text-align:center; max-width:40ch; }
+  .cover-rule{ width:54px; height:1px; background:var(--rule); margin:0 auto 26px; }
+  .cover-title{
+    font-family:var(--display); font-weight:500;
+    font-size:clamp(40px,9vw,76px); line-height:.98;
+    letter-spacing:.01em; margin:0; color:var(--ink);
+  }
+  .cover-title .amp{ display:block; font-size:.42em; letter-spacing:.5em; color:var(--oxblood); margin-top:.5rem; }
+  .cover-sub{
+    font-family:var(--serif); font-style:italic;
+    font-size:clamp(15px,2.6vw,18px); color:var(--ink-soft);
+    margin:26px auto 0; max-width:30ch; line-height:1.6;
+  }
+  .open-btn{
+    margin-top:42px; align-self:center;
+    font-family:var(--display); font-size:13px; letter-spacing:.34em;
+    text-transform:uppercase; color:var(--ink-soft);
+    background:none; border:none; cursor:pointer; padding:10px 4px;
+    position:relative;
+  }
+  .open-btn span{ position:relative; }
+  .open-btn span::after{
+    content:""; position:absolute; left:0; right:0; bottom:-6px; height:1px;
+    background:var(--oxblood); transform:scaleX(.4); transform-origin:center;
+    transition:transform .5s var(--ease);
+  }
+  .open-btn:hover span::after, .open-btn:focus-visible span::after{ transform:scaleX(1); }
+  .cover-sig{
+    margin-top:30px; font-family:var(--display); font-style:italic;
+    font-size:14px; color:var(--ink-faint); letter-spacing:.06em;
+  }
+
+  /* ---------- TWIST (lights out) ---------- */
+  #twist{
+    background:linear-gradient(160deg,#0d0a07,#161009 60%,#0a0705);
+    border-radius:3px 8px 8px 3px;
+  }
+  #twist::after, #twist::before{ display:none; }
+  #twist .leaf{ padding:0; }
+  .twist-wrap{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; text-align:center;
+    padding:32px;
+  }
+  .twist-line{
+    font-family:var(--display); font-style:italic;
+    font-size:clamp(24px,5vw,40px); color:#e9dcc0;
+    opacity:0; transform:translateY(8px);
+    transition:opacity 1.1s var(--ease), transform 1.1s var(--ease);
+    margin:0; letter-spacing:.01em;
+  }
+  .twist-line.show{ opacity:1; transform:translateY(0); }
+  .twist-line.small{ font-size:clamp(16px,3vw,21px); color:#bda87f; font-style:italic; max-width:34ch; }
+  .twist-cont{
+    margin-top:18px; font-family:var(--display); font-size:12px; letter-spacing:.34em;
+    text-transform:uppercase; color:#8a7548; background:none; border:none; cursor:pointer;
+    opacity:0; transition:opacity 1s; padding:10px;
+  }
+  .twist-cont.show{ opacity:1; }
+  .twist-cont:hover{ color:#cdb784; }
+
+  /* ---------- EASTER-EGG GLYPHS ---------- */
+  .glyph{
+    display:inline-flex; vertical-align:middle; cursor:pointer;
+    width:1.1em; height:1.1em; margin:0 .08em;
+    color:var(--brass); opacity:.55;
+    transition:opacity .3s, transform .3s var(--ease), color .3s;
+    position:relative; top:-.02em;
+  }
+  .glyph:hover, .glyph:focus-visible{ opacity:1; color:var(--oxblood); transform:translateY(-1px) scale(1.08); }
+  .glyph svg{ width:100%; height:100%; }
+
+  /* field-note popup */
+  #note-toast{
+    position:fixed; left:50%; bottom:84px; transform:translate(-50%,18px);
+    z-index:60; max-width:min(420px,88vw);
+    background:#1c1610; color:#e9dcc0;
+    border:1px solid rgba(176,137,79,.45);
+    border-radius:6px; padding:16px 20px;
+    font-family:var(--mono); font-size:13.5px; line-height:1.55;
+    box-shadow:0 18px 40px -14px rgba(0,0,0,.7);
+    opacity:0; pointer-events:none; transition:opacity .45s, transform .45s var(--ease);
+  }
+  #note-toast.show{ opacity:1; transform:translate(-50%,0); pointer-events:auto; }
+  #note-toast .tag{ color:var(--brass); display:block; margin-bottom:6px; letter-spacing:.12em; font-weight:700; font-size:11px; }
+
+  /* ---------- LOCKED / PASSWORD ---------- */
+  .lock-wrap{ text-align:center; max-width:34ch; margin:0 auto; }
+  .keyhole{ width:40px; height:40px; margin:0 auto 22px; color:var(--ink-faint); }
+  .lock-input{
+    margin-top:22px; width:100%; max-width:320px;
+    font-family:var(--mono); font-size:15px; letter-spacing:.22em; text-align:center;
+    text-transform:uppercase; color:var(--ink);
+    background:transparent; border:none; border-bottom:1px solid var(--rule);
+    padding:10px 6px; outline:none;
+  }
+  .lock-input:focus{ border-color:var(--oxblood); }
+  .lock-input::placeholder{ color:var(--ink-faint); letter-spacing:.18em; opacity:.7; }
+  .lock-hint{ font-style:italic; color:var(--ink-soft); font-size:15px; margin-top:14px; min-height:1.4em; }
+  .lock-btn{
+    margin-top:18px; font-family:var(--display); font-size:12px; letter-spacing:.32em;
+    text-transform:uppercase; color:var(--ink-soft); background:none;
+    border:1px solid var(--rule); border-radius:2px; padding:9px 22px; cursor:pointer;
+    transition:.25s;
+  }
+  .lock-btn:hover{ border-color:var(--oxblood); color:var(--oxblood); }
+  .unlocked-note{ display:none; }
+  .unlocked-note .secret{
+    font-family:var(--display); font-style:italic; font-size:clamp(22px,4.4vw,32px);
+    color:var(--oxblood); line-height:1.3; margin:0 0 1.2rem;
+  }
+  .sun-point{ font-size:15px; color:var(--ink-soft); font-style:italic; }
+  .sun-point .sun-inline{ color:var(--brass); }
+
+  /* ---------- SUNFLOWER FOOTER + ENVELOPE ---------- */
+  #sunflower{
+    position:fixed; left:50%; bottom:max(34px, calc(env(safe-area-inset-bottom) + 24px));
+    transform:translateX(-50%);
+    width:26px; height:26px; cursor:pointer; z-index:25;
+    color:var(--brass); opacity:.22;
+    transition:opacity .6s, transform .4s var(--ease), filter .6s;
+  }
+  #sunflower:hover{ opacity:.7; transform:translateX(-50%) rotate(12deg); }
+  #sunflower.lit{
+    opacity:.9;
+    filter:drop-shadow(0 0 10px rgba(176,137,79,.6));
+    animation:sway 5s ease-in-out infinite;
+  }
+  @keyframes sway{ 0%,100%{ transform:translateX(-50%) rotate(-6deg);} 50%{ transform:translateX(-50%) rotate(8deg);} }
+
+  #envelope-overlay{
+    position:fixed; inset:0; z-index:80;
+    background:radial-gradient(120% 90% at 50% 30%, rgba(20,14,8,.92), rgba(8,5,3,.97));
+    display:flex; align-items:center; justify-content:center; padding:24px;
+    opacity:0; pointer-events:none; transition:opacity .8s var(--ease);
+  }
+  #envelope-overlay.show{ opacity:1; pointer-events:auto; }
+  .letter-card{
+    background:linear-gradient(120deg,var(--paper-hi),var(--paper-lo));
+    color:var(--ink); max-width:min(520px,90vw);
+    padding:clamp(34px,7vw,60px); border-radius:4px;
+    box-shadow:0 30px 80px -20px rgba(0,0,0,.8);
+    position:relative; transform:translateY(16px) scale(.98);
+    transition:transform .9s var(--ease); text-align:center;
+  }
+  #envelope-overlay.show .letter-card{ transform:translateY(0) scale(1); }
+  .letter-card::after{
+    content:""; position:absolute; inset:0; pointer-events:none; border-radius:4px;
+    box-shadow:0 1px 0 rgba(255,255,255,.4) inset; opacity:.6;
+  }
+  .letter-card .baby{
+    font-family:var(--display); font-size:clamp(24px,5vw,34px); color:var(--ink);
+    margin:0 0 1.3rem; font-weight:500;
+  }
+  .letter-card p{ font-size:17px; line-height:1.7; margin:0 0 1rem; color:var(--ink); }
+  .letter-card .moon{ font-style:italic; color:var(--oxblood); font-size:19px; }
+  .letter-card .sig{ font-family:var(--display); font-size:24px; margin-top:1.4rem; color:var(--ink); }
+  .close-env{
+    margin-top:26px; font-family:var(--display); font-size:12px; letter-spacing:.3em;
+    text-transform:uppercase; color:var(--ink-faint); background:none; border:none; cursor:pointer;
+  }
+  .close-env:hover{ color:var(--oxblood); }
+
+  /* ---------- MOBILE ---------- */
+  @media (max-width:760px){
+    :root{ --page-w:640px; }
+    .nav{ width:40px; height:40px; bottom:18px; top:auto; transform:none; }
+    .nav.prev{ left:14px; }
+    .nav.next{ right:14px; }
+    .nav[hidden]{ opacity:0; }
+    .page{ height:88vh; }
+    .leaf{ padding:30px 26px 64px; }
+    .progress{ bottom:max(8px, env(safe-area-inset-bottom)); }
+    #sunflower{ bottom:max(58px, calc(env(safe-area-inset-bottom) + 44px)); }
+    .folio{ font-size:10.5px; letter-spacing:.24em; }
+  }
+  @media (max-width:420px){
+    .body{ max-width:100%; }
+    .salutation{ font-size:25px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; }
+    .leaf{ transition:opacity .3s; transform:none !important; }
+    .leaf.leaving-left,.leaf.leaving-right{ transform:none !important; }
+  }
+
+  /* keyboard focus visibility */
+  :focus-visible{ outline:2px solid var(--oxblood); outline-offset:3px; border-radius:2px; }
+</style>
+</head>
+<body>
+
+<div id="book">
+  <div class="page" id="page">
+
+    <!-- 0 · COVER -->
+    <section class="leaf active" data-leaf="cover" id="cover">
+      <div class="body">
+        <div class="cover-rule"></div>
+        <h1 class="cover-title">If Only<br>You Knew<span class="amp">&#9829;</span></h1>
+        <p class="cover-sub">A collection of letters to people who did not know the future yet.</p>
+        <button class="open-btn" id="openBtn"><span>Open the book</span></button>
+        <div class="cover-sig">for Bebu, from H</div>
+      </div>
+    </section>
+
+    <!-- 1 · OPENING NOTE -->
+    <section class="leaf" data-leaf="note">
+      <div class="folio"><span>Before we begin</span><span class="num">i</span></div>
+      <div class="body">
+        <p class="lead">These letters are addressed to two strangers.</p>
+        <p>Neither of them has met the other yet. Both of them are about to. They just don't know it yet. And they wouldn't believe me if I told them.</p>
+        <p>So I'm writing ahead of them. To the people they were right before everything changed. To tell them what's coming, and to tell them, mostly, not to be afraid of it.</p>
+        <p class="quietline">Turn the page slowly. There's no hurry. They waited a long time to find each other.</p>
+      </div>
+      <div class="leaf-foot"><span>If Only You Knew</span></div>
+    </section>
+
+    <!-- 2 · BEIGE HOODIE (lift easter egg) -->
+    <section class="leaf" data-leaf="hoodie">
+      <div class="folio"><span>Chapter One &middot; The girl who didn't know yet</span><span class="num">ii</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Girl in the <em>Beige&nbsp;Hoodie</em></h2>
+        <p>You won't remember this, and that's all right. You weren't doing anything you'd think was worth remembering. You stepped into a lift at Mushkan Di's wedding in a beige hoodie, looking like you had somewhere to be, and the doors closed, and that was it. Four seconds. Maybe five.<span class="glyph" tabindex="0" role="button" aria-label="A small lift button" data-note="lift">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 9l3-3 3 3M9 15l3 3 3-3"/></svg>
+        </span></p>
+        <p>Here's the strange part about those few seconds. A man you have never met is going to remember those few seconds far longer than he should. The hoodie. The way you stood. The fact that you had absolutely no idea anyone was looking.</p>
+        <p>You think nothing happened in that lift. I'm writing to tell you that everything did. It just hadn't been given a name yet.</p>
+        <p class="quietline">Go on. The doors are about to open.</p>
+      </div>
+      <div class="leaf-foot"><span>18 February</span><span class="dot"></span><span>2026</span></div>
+    </section>
+
+    <!-- 3 · ON THE STAGE -->
+    <section class="leaf" data-leaf="stage">
+      <div class="folio"><span>Chapter One &middot; The girl who didn't know yet</span><span class="num">iii</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Girl on the <em>Stage</em></h2>
+        <p>The next day, I saw you again.</p>
+
+<p>And this time, you weren't trying to get somewhere. You already were.</p>
+
+<p>You were up on the stage with a camera, right in the middle of all that wedding chaos. The noise, the relatives, the hundred small disasters every wedding quietly runs on.</p>
+
+<p>And somehow, you were making it look like the most fun anyone in the room was having.</p>
+        <p>Everyone was watching the bride and groom. I understand why. That's who you're supposed to watch.</p>
+        <p>But I was watching the girl holding the whole function together and somehow making it look effortless. You had this energy, like the room belonged to you and you were just being generous letting the rest of us stand in it.</p>
+        <p>I didn't know your name yet, so I gave you one in my head.</p>
+<p>It was supposed to be a joke.</p>
+<p>It stopped being one surprisingly quickly.</p>
+<p class="quietline">Main Character. It stuck.</p>
+      </div>
+      <div class="leaf-foot"><span>The day I gave you a name</span></div>
+    </section>
+
+    <!-- 4 · ABOUT TO RECEIVE A MESSAGE -->
+    <section class="leaf" data-leaf="message">
+      <div class="folio"><span>Chapter One &middot; The girl who didn't know yet</span><span class="num">iv</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Girl About to <em>Receive a Message</em></h2>
+        <p>It's almost one in the morning on the twenty-sixth of February, and somewhere a phone is about to light up. It's yours.</p>
+        <p>The message is from someone you don't know. He has rewritten it more times than he'll ever admit. Typed it, deleted it, walked away, come back. He has told himself you won't reply, partly so it'll hurt less when you don't.</p>
+        <p>It says that everyone remembers the bride and groom, but he remembers the girl who made the chaos look fun. And then, because he's run clean out of courage, it just says: <em>Hi.</em></p>
+        <p>You're allowed to ignore it. You don't owe a stranger anything.</p>
+        <p class="quietline">But I know how this goes. Don't leave him on read forever. He means it far more than the word can carry.</p>
+      </div>
+      <div class="leaf-foot"><span>26 February</span><span class="dot"></span><span>12:53 AM</span></div>
+    </section>
+
+    <!-- 5 · ABOUT TO REPLY -->
+    <section class="leaf" data-leaf="reply">
+      <div class="folio"><span>Chapter One &middot; The girl who didn't know yet</span><span class="num">v</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Girl About to <em>Reply</em></h2>
+        <p>You took your time. Good. He deserved a little suspense. He'd have done the same to you.</p>
+        <p>It's evening now. You've decided to answer. Two words, <em>Haha, Hello</em>, and that's all, and it's enough to undo him completely. He reads them, then reads them again to be sure they're real, and somewhere a very nervous idiot spends the next few minutes smiling at his phone, the way those songs he thought were exaggerating always said it would.</p>
+        <p>Soon he'll tell you he only noticed you because someone had to notice quietly. And you'll tease him for it, <em>main character? guess you were noticing someone else then</em>, not knowing he'd meant every letter.</p>
+        <p>You think you just sent a polite reply to a stranger. What you actually did was open a door, and most of the best parts of his life are standing on the other side of it.</p>
+        <p class="quietline">Press send.</p>
+      </div>
+      <div class="leaf-foot"><span>26 February</span><span class="dot"></span><span>7:26 PM</span></div>
+    </section>
+
+    <!-- 6 · HAZEL EYES -->
+    <section class="leaf" data-leaf="hazel">
+      <div class="folio"><span>Chapter One &middot; The girl who didn't know yet</span><span class="num">vi</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Girl Who Does Not Know She Has <em>Hazel Eyes</em></h2>
+        <p>Right now, if someone asked, you'd tell them your eyes are black. You've believed it your whole life. You've wanted them to be hazel, quietly, the way people want small things they've decided they'll never get, and a long time ago you made peace with simply not having them.</p>
+        <p>I need you to hold on a little while.</p>
+        <p>Because there's a man on his way into your life who is going to notice something before you do.</p>
+
+<p>Not because you're trying to show it.</p>
+
+<p>Not because you're talking about it.</p>
+
+<p>Just because one afternoon, the light is going to catch your eyes at exactly the right moment.</p>
+
+<p>And he'll see what you've never been allowed to see.</p>
+        <p>They're hazel. They've always been hazel.</p>
+        <p>Keep wanting it for now. I promise the moment someone finally tells you is worth every year you spent thinking you'd been given less than you have.</p>
+        <p class="quietline">You spent years wishing for something you already had.</p>
+        <p class="quietline">Funny how that turns out to be true about more than your eyes.</p>
+      </div>
+      <div class="leaf-foot"><span>A truth you've been carrying</span></div>
+    </section>
+
+    <!-- 7 · ABOUT TO MEET ME -->
+    <section class="leaf" data-leaf="meet">
+      <div class="folio"><span>Chapter One &middot; The girl who didn't know yet</span><span class="num">vii</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Girl About to <em>Meet Me</em></h2>
+        <p>For fifty-one days you're going to be a voice, a screen, and a name that lights up a phone at the worst, best hours of the night. There's a call coming, the sixth of April, 1:33 in the morning, that runs an hour and forty-five minutes, and somewhere in the middle of it he stops listening to <em>what</em> you're saying and starts listening to <em>how</em> you say it. He falls for your voice before he ever sees you in daylight. He'll deny the exact moment. He's lying.</p>
+        <p>Then comes the eighteenth of April. Quarter past noon. A mall, of all unremarkable places. He'll be in a black polo and navy jeans, pretending to be calm. You'll be in a white top with little black dots and light-blue jeans, and you'll look at him and say <em>"Hiiii,"</em> with all those extra i's, and he'll say, <em>"Hello, finally."</em></p>
+        <p class="quietline">Fifty-one days, and the first real word he says to you is <em>finally.</em></p>
+
+<p class="quietline">A voice is about to become a person.</p>
+
+<p class="quietline">Don't be nervous.</p>
+
+<p class="quietline">He's been waiting fifty-one days for this. Terrified is a very polite word for what's happening inside his head.</p>
+      </div>
+      <div class="leaf-foot"><span>18 April</span><span class="dot"></span><span>12:16 PM</span></div>
+    </section>
+
+    <!-- 8 · MIAMA -->
+    <section class="leaf" data-leaf="miama">
+      <div class="folio"><span>Chapter One &middot; The girl who didn't know yet</span><span class="num">viii</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Girl Sitting Across From Me at <em>Miama</em></h2>
+        <p>This is the table.</p>
+        <p>This is the afternoon I warned you about a few pages ago.</p>
+        <p>You're talking. You're always talking when you get comfortable, and it's one of the things he'll come to love.</p>
+        <p>The conversation is moving quickly.</p>
+        <p>Faster than either of you expected.</p>
+        <p>And somewhere in the middle of it, something small happens.</p>
+        <p>The light shifts.</p>
+        <p>He looks at you.</p>
+        <p>And notices something you've never noticed about yourself.</p>
+        <p>He doesn't say anything.</p>
+        <p>Not then.</p>
+        <p>He just stores the moment away.</p>
+        <p>The way he stores a lot of things about you.</p>
+        <p>Quietly.</p>
+        <p>Carefully.</p>
+        <p>Like something worth remembering.</p>
+        <p>A few days from now, he's going to tell you something that catches you completely off guard.</p>
+        <p>He's going to tell you that your eyes are hazel.</p>
+        <p>You'll argue.</p>
+        <p>You'll be certain he's wrong.</p>
+        <p>Certain they're black.</p>
+        <p>Certain he's mistaken.</p>
+        <p>And then you'll discover that he wasn't.</p>
+        <p>The funny thing is that the moment he tells you isn't the moment he notices.</p>
+        <p>That happened here.</p>
+        <p>At this table.</p>
+        <p>While you were busy talking about something else entirely.</p>
+        <p class="quietline">You spent years thinking you'd been handed black.</p>
+        <p class="quietline">You were carrying hazel the whole time.</p>
+      </div>
+      <div class="leaf-foot"><span>Cafe Miama</span><span class="dot"></span><span>the same day</span></div>
+    </section>
+
+    <!-- 9 · OUTSIDE SOCIALITE -->
+    <section class="leaf" data-leaf="socialite">
+      <div class="folio"><span>Chapter One &middot; The girl who didn't know yet</span><span class="num">ix</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Girl Outside <em>Socialite</em></h2>
+        <p>It's just past midnight on the nineteenth of April. You're standing outside a place called Socialite, about to do something that should be terrifying and somehow isn't.</p>
+        <p>He's going to hug you for the first time. He's going to kiss your forehead. And here's the part neither of you will be able to explain afterward: there's no nervousness in it. No awkward laugh, no fumbling, no <em>is this okay.</em> Just a quiet, ridiculous certainty, like two people remembering something rather than doing it for the first time.</p>
+        <p>You won't have a word for what just happened. He will, eventually. He'll call it <em>home.</em><span class="glyph" tabindex="0" role="button" aria-label="A small heart" data-note="lap">&#9829;</span></p>
+        <p>Not a place. You. The peace of you. The way the noise in his head goes quiet when you're near.</p>
+        <p class="quietline">You're about to become home to someone, and you have no idea you're doing it. That's the most <em>you</em> thing about you.</p>
+      </div>
+      <div class="leaf-foot"><span>19 April</span><span class="dot"></span><span>12:30 AM</span></div>
+    </section>
+
+    <!-- 10 · TWIST -->
+    <section class="leaf" data-leaf="twist" id="twist">
+      <div class="twist-wrap" id="twistWrap">
+        <p class="twist-line" data-step="0">Wait.</p>
+        <p class="twist-line" data-step="1">I think I've been writing to the wrong person.</p>
+        <p class="twist-line small" data-step="2">Or, not the wrong person. Just not the only one who needed to hear this. There were always two strangers in this story.</p>
+        <button class="twist-cont" id="twistCont">Turn the page</button>
+      </div>
+    </section>
+
+    <!-- 11 · DEAR BOY -->
+    <section class="leaf" data-leaf="boy">
+      <div class="folio"><span>Chapter Two &middot; The boy who thought he did</span><span class="num">x</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear <em>Boy</em></h2>
+        <p>I owe you an apology. All this time I've been writing to her, telling a stranger not to be afraid of what's coming, and I forgot there were two strangers in this story.</p>
+        <p>You're the other one.</p>
+        <p>You don't know her yet. Right now you're getting through your days the way you taught yourself to: carefully, usefully, keeping the warm parts of you folded small so they can't be stepped on. You've decided some things about yourself that you think are just facts.</p>
+        <p>They're not facts. They're scars wearing the costume of facts.</p>
+        <p class="quietline">So let me write to you for a while. Let me tell you what she's going to teach you, while you still think you already know how your story goes. You don't. Keep reading.</p>
+      </div>
+      <div class="leaf-foot"><span>To the boy I used to be</span></div>
+    </section>
+
+    <!-- 12 · DONE LOVING -->
+    <section class="leaf" data-leaf="done">
+      <div class="folio"><span>Chapter Two &middot; The boy who thought he did</span><span class="num">xi</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Boy Who Thinks He Is <em>Done Loving</em></h2>
+        <p>You've started to believe love is something that already happened to you, past tense, and that the version of you capable of it got used up somewhere along the way. You're not even bitter about it. That's almost worse. You've just quietly closed the account and moved your hopes somewhere safer.</p>
+        <p>I'm not going to argue with you. You wouldn't believe me anyway.</p>
+        <p>I'm only going to give you a date. 18 February 2026. Pay attention. After that, hold your conclusions a little more loosely.</p>
+        <p class="quietline">You are nowhere near done. You haven't even started the part that counts.</p>
+      </div>
+      <div class="leaf-foot"><span>Hold your conclusions loosely</span></div>
+    </section>
+
+    <!-- 13 · BIRTHDAYS -->
+    <section class="leaf" data-leaf="birthdays">
+      <div class="folio"><span>Chapter Two &middot; The boy who thought he did</span><span class="num">xii</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Boy Who Stopped Looking Forward to <em>Birthdays</em></h2>
+       <p>Truth is, you've cried on every birthday since moving to Kolkata.</p>
+
+<p>Different reasons.</p>
+
+<p>Same feeling.</p>
+
+<p>You let it become an ordinary day to get through, because looking forward to it had only ever set you up to be quietly disappointed.</p>
+
+<p>Easier not to hope.</p>
+
+<p>You got good at not hoping.</p>
+
+<p>You called it maturity.</p>
+        <p>I want to tell you something that's going to sound impossible from where you're sitting.</p>
+        <p>There's a person coming who will make you look forward to days again. Not just birthdays. Ordinary Tuesdays. Calls at one in the morning. The drive to an airport.</p>
+        <p class="quietline">You've spent so long bracing for disappointment that you forgot the other thing days can do. She's going to remind you. Start hoping again, just a little. Practise.</p>
+      </div>
+      <div class="leaf-foot"><span>It's safe to hope now</span></div>
+    </section>
+
+    <!-- 14 · GIVING (litany + airplane / rose / cctv eggs) -->
+    <section class="leaf" data-leaf="giving">
+      <div class="folio"><span>Chapter Two &middot; The boy who thought he did</span><span class="num">xiii</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Boy Who Thinks Love Is Mostly About <em>Giving</em></h2>
+        <p>You've built your whole way of loving people around effort. You make the things. You remember the dates. You notice what someone needs and hand it to them before they ask. You're proud of that, you should be, but somewhere in there you decided that giving was your half of the deal, and being loved back was something that happened to other, easier people.</p>
+        <p>Sit down for this part. Read it slowly.</p>
+        <div class="litany">
+          <p>Someone is going to travel all the way to an airport just to watch you walk out of it.<span class="glyph" tabindex="0" role="button" aria-label="A tiny airplane" data-note="plane">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 12l-8.5 2.5L9 21l-2-5-5-2 6.5-3.5L21 12z"/></svg>
+          </span></p>
+          <p>She's going to do it twice.</p>
+
+<p>The first time you'll think it's special.</p>
+
+<p>The second time you'll realise it wasn't a gesture.</p>
+
+<p>She just genuinely likes seeing you.</p>
+          <p>She's going to put five white roses in your hands so casually that she won't even realise she's giving you a memory you'll keep forever.<span class="glyph" tabindex="0" role="button" aria-label="A small white rose" data-note="rose">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M12 11a3 3 0 100-6 3 3 0 000 6z"/><path d="M12 11c0 0-4-1-4-4M12 11c0 0 4-1 4-4M12 11v9"/><path d="M9 17c-2 0-3-1.5-3-3M15 17c2 0 3-1.5 3-3"/></svg>
+          </span></p>
+          <p>You're going to build things because you miss her. Little solutions. Little surprises. Little ways to make the distance feel smaller. And she's going to love every single one of them.<span class="glyph" tabindex="0" role="button" aria-label="A small camera" data-note="cctv">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="6" width="13" height="11" rx="1.5"/><path d="M16 9l5-2v9l-5-2"/><circle cx="8" cy="11.5" r="2"/></svg>
+          </span></p>
+          <p>She's going to notice the exact second your smile disappears, before you've said a word.</p>
+          <p>She's going to say <em>"Dhyan se jaana Bebu&nbsp;<span class="heart">&#9829;</span>"</em> and mean every part of it.</p>
+        </div>
+        <p class="quietline">You thought love was the giving. She's going to teach you what it feels like to be the one who's loved back. Let her. That's the whole lesson. <em>Let&nbsp;her.</em></p>
+      </div>
+      <div class="leaf-foot"><span>Let her</span></div>
+    </section>
+
+    <!-- 15 · HARD TO LOVE -->
+    <section class="leaf" data-leaf="hard">
+      <div class="folio"><span>Chapter Two &middot; The boy who thought he did</span><span class="num">xiv</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear Boy Who Thinks He Is <em>Hard to Love</em></h2>
+        <p>This is the last thing I'll tell you, and it's the one you most need and least believe.</p>
+        <p>You think you're a lot. Too much in some places, not enough in others. You think loving you is a project, that anyone who takes it on will eventually get tired, the way you've quietly always expected them to.</p>
+        <p>So here's what I know now, from the far side of it: she doesn't find you hard to love.</p>
+
+<p>She finds it easy.</p>
+
+<p>Embarrassingly easy.</p>
+
+<p>She loves watching you when you're doing absolutely nothing.</p>
+
+<p>She'll say, <em>"Bebu, camera pe aao."</em></p>
+
+<p>And you'll say, <em>"Coming."</em></p>
+
+<p>Every single time.</p>
+
+<p>And somehow, it never once feels like effort to either of you.</p>
+
+<p>One day you'll realise she isn't looking for a more interesting version of you.</p>
+
+<p>She likes this one.</p>
+
+<p>The ordinary one.</p>
+
+<p>The one eating, working, sitting quietly, doing absolutely nothing.</p>
+        <p>That's the secret you couldn't have known. The right person doesn't <em>endure</em> you. They just enjoy you being there.</p>
+        <p class="quietline">You were never hard to love. You were just loving people who didn't know how. She knows how. You're almost there. Go and meet her.</p>
+      </div>
+      <div class="leaf-foot"><span>You were never hard to love</span></div>
+    </section>
+
+    <!-- 16 · DEAR STRANGER -->
+    <section class="leaf" data-leaf="stranger">
+      <div class="folio"><span>Coda</span><span class="num">xv</span></div>
+      <div class="body">
+        <h2 class="salutation">Dear <em>Stranger</em></h2>
+        <p>I started these letters writing to two people I called strangers, a girl in a beige hoodie who didn't know what was coming, and a boy who was certain he already did.</p>
+        <p>I have to tell you something now.</p>
+        <p>The girl in the beige hoodie isn't a stranger anymore. She has a name I made up and she let me keep, and a quieter one underneath it, and a thousand small ordinary moments I'd choose over anyone else's grand ones.</p>
+        <p>And the boy isn't the same boy either. He looks forward to things now. He gets picked up from airports by a girl who smiles like she's happier to see him than he is to see her. He still remembers exactly how five white roses felt in his hands. He has a camera that exists for no reason except that someone he loves likes to watch him through it.</p>
+        <p>So there's really only one thing left to say, sent backward to before either of them knew.</p>
+        <p class="quietline">If I could go back and tell either of those strangers one thing, I'd tell them not to worry. They're going to find each other. <span class="heart">&#9829;</span></p>
+      </div>
+      <div class="leaf-foot"><span>They found each other</span></div>
+    </section>
+
+    <!-- 17 · LOCKED PAGE -->
+    <section class="leaf" data-leaf="locked">
+      <div class="folio"><span>One page is still locked</span><span class="num">xvi</span></div>
+      <div class="body">
+        <div class="lock-wrap" id="lockWrap">
+          <div class="keyhole">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="9" r="4"/><path d="M10.5 12.5L9 20h6l-1.5-7.5"/></svg>
+          </div>
+          <p style="font-style:italic;color:var(--ink-soft);">There's one more page. I kept it locked.</p>
+          <p style="color:var(--ink-soft);">You've known the word since the day a stranger first gave it to you.</p>
+          <input class="lock-input" id="lockInput" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="the word" aria-label="Password" />
+          <div class="lock-hint" id="lockHint"></div>
+          <button class="lock-btn" id="lockBtn">Unlock</button>
+        </div>
+
+        <div class="unlocked-note" id="unlockedNote">
+          <p style="font-style:italic;color:var(--ink-soft);margin-bottom:1.4rem;">You were right. You always were the word.</p>
+          <p class="secret">The truth is, I still think I got lucky.</p>
+          <p class="sun-point">There's one envelope left. It's been waiting at the very bottom of every page, a small lit <span class="sun-inline">&#10048;</span> sunflower. Tap it when you're ready.</p>
+        </div>
+      </div>
+      <div class="leaf-foot"><span>MAIN CHARACTER</span></div>
+    </section>
+
+  </div>
+</div>
+
+<!-- NAVIGATION -->
+<button class="nav prev" id="prev" aria-label="Previous page">&#8592;</button>
+<button class="nav next" id="next" aria-label="Next page">&#8594;</button>
+<div class="progress" id="progress"></div>
+
+<!-- SUNFLOWER (final envelope trigger) -->
+<div id="sunflower" role="button" tabindex="0" aria-label="A small sunflower">
+  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3.2" fill="#5c4f3d"/><g><path d="M12 2.5c.9 2.2.9 4-0 5.5-0.9-1.5-0.9-3.3 0-5.5zM12 21.5c-.9-2.2-.9-4 0-5.5.9 1.5.9 3.3 0 5.5zM2.5 12c2.2-.9 4-.9 5.5 0-1.5.9-3.3.9-5.5 0zM21.5 12c-2.2.9-4 .9-5.5 0 1.5-.9 3.3-.9 5.5 0zM5.2 5.2c2.1.7 3.5 1.8 4.2 3.2-1.6-.4-3-1.5-4.2-3.2zM18.8 18.8c-2.1-.7-3.5-1.8-4.2-3.2 1.6.4 3 1.5 4.2 3.2zM18.8 5.2c-1.2 1.7-2.6 2.8-4.2 3.2.7-1.4 2.1-2.5 4.2-3.2zM5.2 18.8c1.2-1.7 2.6-2.8 4.2-3.2-.7 1.4-2.1 2.5-4.2 3.2z"/></g></svg>
+</div>
+
+<!-- FIELD-NOTE TOAST -->
+<div id="note-toast"><span class="tag" id="noteTag"></span><span id="noteBody"></span></div>
+
+<!-- FINAL ENVELOPE -->
+<div id="envelope-overlay">
+  <div class="letter-card">
+    <p class="baby">Baby,</p>
+    <p>The funny thing is that neither of those strangers had any idea what was coming.</p>
+    <p>Thankfully, you replied.</p>
+
+<p>Neither of us had any idea what we were starting.</p>
+    <p class="moon">To moon and back.</p>
+    <p class="sig">H&nbsp;&#9829;</p>
+    <button class="close-env" id="closeEnv">Close</button>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var leaves = Array.prototype.slice.call(document.querySelectorAll('.leaf'));
+  var idx = 0;
+  var unlocked = false;
+  var maxReachable = 17; // index of the locked page (last leaf); envelope is its own overlay
+
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  var progress = document.getElementById('progress');
+  var sunflower = document.getElementById('sunflower');
+
+  function roman(){ return ''; } // (folio numerals are read from the page itself)
+
+  /* ---------- scroll fade affordance (only when a letter overflows) ---------- */
+  function applyFade(body){
+    if(!body) return;
+    var top = body.scrollTop > 4;
+    var bottom = (body.scrollTop + body.clientHeight) < (body.scrollHeight - 4);
+    var m;
+    if(top && bottom){
+      m = 'linear-gradient(to bottom, transparent 0, #000 30px, #000 calc(100% - 34px), transparent 100%)';
+    } else if(bottom){
+      m = 'linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%)';
+    } else if(top){
+      m = 'linear-gradient(to bottom, transparent 0, #000 30px, #000 100%)';
+    } else {
+      m = '';
+    }
+    body.style.webkitMaskImage = m;
+    body.style.maskImage = m;
+  }
+  function refreshActiveFade(){
+    var b = leaves[idx].querySelector('.body');
+    if(b){ b.scrollTop = 0; applyFade(b); }
+  }
+  // attach scroll listeners once
+  leaves.forEach(function(l){
+    var b = l.querySelector('.body');
+    if(b) b.addEventListener('scroll', function(){ applyFade(b); }, {passive:true});
+  });
+  window.addEventListener('resize', function(){ applyFade(leaves[idx].querySelector('.body')); });
+
+  function updateChrome(){
+    var leaf = leaves[idx];
+    var name = leaf.getAttribute('data-leaf');
+    var bare = (name === 'cover' || name === 'twist');
+
+    // nav visibility
+    prevBtn.hidden = bare || (idx === 0);
+    nextBtn.hidden = bare || (idx >= maxReachable);
+
+    // progress folio: mirror the printed numeral on the active page
+    if(bare){
+      progress.textContent = '';
+      progress.style.opacity = '0';
+    } else {
+      var numEl = leaf.querySelector('.folio .num');
+      progress.textContent = numEl ? numEl.textContent : '';
+      progress.style.opacity = numEl ? '1' : '0';
+    }
+
+    // sunflower lit only after unlock
+    sunflower.classList.toggle('lit', unlocked);
+  }
+
+  function goTo(n, dir){
+    if(n < 0 || n > maxReachable || n === idx) return;
+    var current = leaves[idx];
+    var nextLeaf = leaves[n];
+    current.classList.remove('active');
+    current.classList.add(dir === 'next' ? 'leaving-left' : 'leaving-right');
+    nextLeaf.classList.remove('leaving-left','leaving-right');
+    // force reflow so the entering transform is applied from offset
+    void nextLeaf.offsetWidth;
+    nextLeaf.classList.add('active');
+    idx = n;
+
+    // cleanup leaving classes after transition
+    setTimeout(function(){
+      leaves.forEach(function(l){ if(l!==nextLeaf) l.classList.remove('leaving-left','leaving-right'); });
+    }, 720);
+
+    updateChrome();
+    setTimeout(refreshActiveFade, 60);
+    setTimeout(refreshActiveFade, 740);
+
+    if(nextLeaf.getAttribute('data-leaf') === 'twist') runTwist();
+    if(nextLeaf.getAttribute('data-leaf') === 'locked'){
+      setTimeout(function(){ var i=document.getElementById('lockInput'); if(i && !unlocked) i.focus(); }, 760);
+    }
+  }
+
+  function next(){ goTo(idx+1, 'next'); }
+  function prev(){ goTo(idx-1, 'prev'); }
+
+  nextBtn.addEventListener('click', next);
+  prevBtn.addEventListener('click', prev);
+
+  document.getElementById('openBtn').addEventListener('click', next);
+
+  // keyboard
+  document.addEventListener('keydown', function(e){
+    if(e.target && (e.target.tagName === 'INPUT')) return;
+    if(e.key === 'ArrowRight') next();
+    else if(e.key === 'ArrowLeft') prev();
+    else if(e.key === 'Escape') closeEnvelope();
+  });
+
+  // swipe
+  var tx=0, ty=0;
+  document.addEventListener('touchstart', function(e){
+    tx = e.changedTouches[0].clientX; ty = e.changedTouches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].clientX - tx;
+    var dy = e.changedTouches[0].clientY - ty;
+    if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)*1.4){
+      if(dx < 0) next(); else prev();
+    }
+  }, {passive:true});
+
+  /* ---------- TWIST sequence ---------- */
+  var twistRan = false;
+  function runTwist(){
+    if(twistRan) return; twistRan = true;
+    var lines = document.querySelectorAll('#twistWrap .twist-line');
+    var cont = document.getElementById('twistCont');
+    var delays = [500, 2300, 4200];
+    lines.forEach(function(l,i){
+      setTimeout(function(){ l.classList.add('show'); }, delays[i] || 500);
+    });
+    setTimeout(function(){ cont.classList.add('show'); }, 6200);
+    cont.addEventListener('click', next, {once:true});
+  }
+
+  /* ---------- EASTER-EGG field notes ---------- */
+  var NOTES = {
+    lift:  { tag:'OBSERVATION FILE', body:'Observation #001: Smile detected.' },
+    plane: { tag:'FIELD NOTE', body:'Evidence suggests subject enjoys seeing me more than normal.' },
+    cctv:  { tag:'CAMERA LOG', body:'You built the camera to feel closer. You never expected somebody would love looking through it this much.' },
+    rose:  { tag:'NOTE TO SELF', body:'Nobody had ever given him flowers before.' },
+lap:   { tag:'PRIVATE OBSERVATION', body:'You once worried your bones would poke me if I rested my head on your lap. Meanwhile, I was busy thinking I would happily stay there forever. ♥️' }
+  };
+  var toast = document.getElementById('note-toast');
+  var noteTag = document.getElementById('noteTag');
+  var noteBody = document.getElementById('noteBody');
+  var toastTimer;
+  function showNote(key){
+    var n = NOTES[key]; if(!n) return;
+    noteTag.textContent = n.tag;
+    noteBody.textContent = n.body;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 5200);
+  }
+  document.querySelectorAll('.glyph').forEach(function(g){
+    g.addEventListener('click', function(){ showNote(g.getAttribute('data-note')); });
+    g.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); showNote(g.getAttribute('data-note')); } });
+  });
+  toast.addEventListener('click', function(){ toast.classList.remove('show'); });
+
+  /* ---------- PASSWORD ---------- */
+  var lockInput = document.getElementById('lockInput');
+  var lockHint = document.getElementById('lockHint');
+  var lockBtn = document.getElementById('lockBtn');
+  var lockWrap = document.getElementById('lockWrap');
+  var unlockedNote = document.getElementById('unlockedNote');
+  var tries = 0;
+
+  function tryUnlock(){
+    var val = (lockInput.value || '').replace(/\s+/g,'').toUpperCase();
+    if(val === 'MAINCHARACTER'){
+      unlocked = true;
+      lockWrap.style.transition = 'opacity .5s';
+      lockWrap.style.opacity = '0';
+      setTimeout(function(){
+        lockWrap.style.display = 'none';
+        unlockedNote.style.display = 'block';
+        unlockedNote.style.opacity = '0';
+        unlockedNote.style.transition = 'opacity 1s ease';
+        void unlockedNote.offsetWidth;
+        unlockedNote.style.opacity = '1';
+        sunflower.classList.add('lit');
+        updateChrome();
+      }, 520);
+    } else {
+      tries++;
+      var hints = [
+        'Not quite. He said it to you first, the day you made the chaos look fun.',
+        'Close your eyes. It\u2019s the name he gave you before he knew yours.',
+        'Two words, no space. The one that stuck. The one in the footer below.'
+      ];
+      lockHint.textContent = hints[Math.min(tries-1, hints.length-1)];
+      lockInput.focus();
+    }
+  }
+  lockBtn.addEventListener('click', tryUnlock);
+  lockInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryUnlock(); } });
+
+  /* ---------- ENVELOPE ---------- */
+  var overlay = document.getElementById('envelope-overlay');
+  function openEnvelope(){
+    if(!unlocked){
+      // gentle nudge, keep the envelope as the real finale
+      noteTag.textContent = 'STILL SEALED';
+      noteBody.textContent = 'Not yet. One page is still locked, find the word first.';
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 4200);
+      return;
+    }
+    overlay.classList.add('show');
+  }
+  function closeEnvelope(){ overlay.classList.remove('show'); }
+  sunflower.addEventListener('click', openEnvelope);
+  sunflower.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openEnvelope(); } });
+  document.getElementById('closeEnv').addEventListener('click', closeEnvelope);
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) closeEnvelope(); });
+
+  updateChrome();
+  setTimeout(refreshActiveFade, 80);
+})();
+</script>
+</body>
+</html>
